@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shift Velocity: Momentum Maker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        /* === CSS RESET & BASE VARIABLES === */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        :root {
+            --primary: #00f0ff;
+            --secondary: #ff003c;
+            --success: #00ff66;
+            --warning: #ffcc00;
+            --dark-bg: #0b0c10;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-light: #e0e0e0;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a0b2e 0%, #0b0c10 50%, #001f3f 100%);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            color: var(--text-light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* === BACKGROUND PATTERNS === */
+        .pattern-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: radial-gradient(var(--glass-border) 1px, transparent 1px);
+            background-size: 30px 30px;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* === UTILITY: GLASSMORPHISM === */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        /* === LAYOUT CONTAINERS === */
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .screen {
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* === TYPOGRAPHY === */
+        h1, h2, h3 {
+            color: #fff;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+            text-align: center;
+        }
+
+        h1 { font-size: 2.5rem; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; }
+        h2 { font-size: 1.8rem; color: var(--primary); }
+        p { line-height: 1.6; font-size: 1rem; margin-bottom: 15px; text-align: center; }
+
+        .highlight { color: var(--primary); font-weight: bold; }
+        .danger { color: var(--secondary); font-weight: bold; }
+
+        /* === FORMS & BUTTONS === */
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid var(--primary);
+            background: rgba(0,0,0,0.5);
+            color: #fff;
+            font-size: 1.2rem;
+            text-align: center;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        input[type="text"]:focus {
+            box-shadow: 0 0 15px var(--primary);
+        }
+
+        .btn {
+            background: transparent;
+            color: #fff;
+            border: 2px solid var(--primary);
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .btn:hover {
+            background: var(--primary);
+            color: #000;
+            box-shadow: 0 0 20px var(--primary);
+            transform: scale(1.02);
+        }
+
+        .btn-option {
+            border-color: rgba(255,255,255,0.3);
+            text-transform: none;
+            text-align: left;
+            margin-bottom: 10px;
+        }
+        .btn-option:hover {
+            border-color: var(--primary);
+            background: rgba(0, 240, 255, 0.1);
+            color: #fff;
+            box-shadow: none;
+        }
+
+        /* === GAMEPLAY UI === */
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.6);
+            padding: 10px 20px;
+            border-radius: 15px;
+            border: 1px solid var(--glass-border);
+            position: sticky;
+            top: 10px;
+            z-index: 100;
+        }
+
+        .stats-group { display: flex; flex-direction: column; gap: 5px; width: 100%; }
+        
+        .bar-container {
+            width: 100%;
+            height: 10px;
+            background: #333;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s ease, background-color 0.5s ease;
+        }
+
+        #momentum-bar .bar-fill { background: var(--primary); box-shadow: 0 0 10px var(--primary); }
+        #workload-bar .bar-fill { background: var(--secondary); box-shadow: 0 0 10px var(--secondary); }
+
+        .bar-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        /* === DIALOG CARDS (3D FLIP) === */
+        .card-scene {
+            width: 100%;
+            perspective: 1000px;
+            margin: 20px 0;
+            min-height: 250px;
+        }
+
+        .card-object {
+            width: 100%;
+            height: 100%;
+            min-height: 250px;
+            position: relative;
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
+        }
+
+        .card-object.is-flipped { transform: rotateY(180deg); }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+
+        .card-front {
+            background: linear-gradient(135deg, rgba(0,240,255,0.1), rgba(0,0,0,0.8));
+            border: 2px solid var(--primary);
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, rgba(255,0,60,0.1), rgba(0,0,0,0.8));
+            transform: rotateY(180deg);
+        }
+        
+        .card-back.success-back {
+            background: linear-gradient(135deg, rgba(0,255,102,0.1), rgba(0,0,0,0.8));
+            border: 2px solid var(--success);
+        }
+
+        .card-back.neutral-back {
+            background: linear-gradient(135deg, rgba(255,204,0,0.1), rgba(0,0,0,0.8));
+            border: 2px solid var(--warning);
+        }
+
+        .card-back.danger-back {
+            background: linear-gradient(135deg, rgba(255,0,60,0.1), rgba(0,0,0,0.8));
+            border: 2px solid var(--secondary);
+        }
+
+        .scenario-text { font-size: 1.2rem; font-weight: 500; margin-bottom: 15px; }
+        .feedback-title { font-size: 1.5rem; font-weight: 900; margin-bottom: 10px; text-transform: uppercase;}
+        
+        /* === BADGES === */
+        .badges-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .badge {
+            background: rgba(255,215,0,0.2);
+            border: 1px solid gold;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: gold;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(255,215,0,0.5);
+            animation: popIn 0.5s ease;
+        }
+        @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+
+        /* === AUDIO CONTROLS === */
+        .audio-ctrl {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: #fff;
+            padding: 10px;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 1000;
+            font-size: 1.2rem;
+            backdrop-filter: blur(5px);
+        }
+
+        /* === FOOTER === */
+        footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.5);
+            margin-top: auto;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            h1 { font-size: 2rem; }
+            .glass-panel { padding: 20px; }
+            .card-scene { min-height: 300px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="pattern-overlay"></div>
+
+    <div class="container">
+        <!-- 1. INTRO SCREEN -->
+        <div id="screen-intro" class="screen active glass-panel">
+            <h1>Shift Velocity</h1>
+            <h2>Momentum Maker</h2>
+            <p>Dunia kerja berubah dalam semalam. Kecepatanmu beradaptasi adalah penentu segalanya.</p>
+            <br>
+            <input type="text" id="playerName" placeholder="Masukkan Nama Anda..." autocomplete="off">
+            <button class="btn" onclick="goToBriefing()">Masuk ke Sistem</button>
+        </div>
+
+        <!-- 2. MISSION BRIEFING SCREEN -->
+        <div id="screen-briefing" class="screen glass-panel">
+            <h2>Mission Briefing</h2>
+            <p>Selamat datang, Agent <span id="display-name" class="highlight"></span>.</p>
+            <div style="text-align: left; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                <p><strong>[THE WHY]</strong><br> Menunggu instruksi berulang kali hanya akan menciptakan penumpukan kerja. Sukses sejati diraih saat kamu melompat ke "New Beginning" dengan aksi nyata sesegera mungkin!</p>
+                <p><strong>[RULES OF ENGAGEMENT]</strong><br>
+                1. Kamu akan menghadapi 10 situasi perubahan mendadak.<br>
+                2. Pilih respon paling cepat dan proaktif.<br>
+                3. Aksi Cepat = Momentum Naik ⚡<br>
+                4. Ragu/Mengeluh = Tumpukan Kerja (Workload) Naik ⚠️</p>
+            </div>
+            <button class="btn" onclick="startGame()">Siap Eksekusi (Mulai)</button>
+        </div>
+
+        <!-- 3. GAMEPLAY SCREEN -->
+        <div id="screen-game" class="screen">
+            <div class="hud">
+                <div class="stats-group">
+                    <div class="bar-labels">
+                        <span>Momentum ⚡ (<span id="momentum-txt">0</span>%)</span>
+                        <span>Skor: <span id="score-txt" class="highlight">0</span></span>
+                    </div>
+                    <div class="bar-container" id="momentum-bar"><div class="bar-fill" id="momentum-fill"></div></div>
+                    
+                    <div class="bar-labels" style="margin-top: 5px;">
+                        <span>Workload ⚠️ (<span id="workload-txt">0</span>%)</span>
+                        <span>Progress: <span id="progress-txt">1/10</span></span>
+                    </div>
+                    <div class="bar-container" id="workload-bar"><div class="bar-fill" id="workload-fill"></div></div>
+                </div>
+            </div>
+
+            <div class="badges-container" id="in-game-badges"></div>
+
+            <div class="card-scene">
+                <div class="card-object" id="dialog-card">
+                    <div class="card-face card-front glass-panel">
+                        <h3 style="color:var(--primary); margin-bottom: 10px;">Kasus #<span id="q-number">1</span></h3>
+                        <p class="scenario-text" id="scenario-text">Skenario loading...</p>
+                    </div>
+                    <div class="card-face card-back glass-panel" id="card-back">
+                        <h3 class="feedback-title" id="feedback-title">Result</h3>
+                        <p id="feedback-text">Feedback text here...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-panel" id="options-container">
+                <!-- Options injected via JS -->
+            </div>
+        </div>
+
+        <!-- 4. RESULT SCREEN -->
+        <div id="screen-result" class="screen glass-panel">
+            <h1>Mission Complete</h1>
+            <h2 id="final-title" style="margin-bottom: 10px;">Evaluating...</h2>
+            
+            <div style="background: rgba(0,0,0,0.5); padding: 20px; border-radius: 15px; margin-bottom: 20px;">
+                <p><strong>Adaptability Index:</strong> <span id="final-score" class="highlight" style="font-size: 1.5rem;">0</span> Poin</p>
+                <p><strong>Max Momentum:</strong> <span id="final-momentum" style="color:var(--primary);">0</span>%</p>
+                <p><strong>Status:</strong> <span id="final-status"></span></p>
+            </div>
+
+            <div class="badges-container" id="final-badges" style="margin-bottom: 20px;"></div>
+
+            <div style="text-align: left; max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; margin-bottom: 20px; font-size: 0.9rem;">
+                <h3 style="font-size: 1rem; color: #fff; text-align: left;">Debrief Log:</h3>
+                <ul id="debrief-list" style="margin-left: 20px; color: #ccc;"></ul>
+            </div>
+
+            <button class="btn" onclick="location.reload()">Re-Deployment (Main Lagi)</button>
+        </div>
+    </div>
+
+    <!-- Audio Control -->
+    <div class="audio-ctrl" onclick="toggleMute()" id="audio-btn">🔊</div>
+
+    <footer>
+        Education & Training Dept. &copy; 2026
+    </footer>
+
+    <script>
+        /* =========================================================================
+           DATA SOAL & SKENARIO (10 Pertanyaan)
+           Berdasarkan Teori: Membangun Desire & Transisi Cepat ke New Beginning
+        ========================================================================= */
+        const questions = [
+            {
+                scenario: "Aplikasi meeting mendadak diganti dari Zoom ke platform X tepat 10 menit sebelum presentasi klien besar.",
+                options: [
+                    { text: "Buka platform X, pelajari fitur dasar, dan langsung kirim link ke klien.", type: "action", score: 10, msg: "New Beginning! Aksi cepat meminimalisir kepanikan klien." },
+                    { text: "Menunggu tim IT memberikan tutorial PDF cara penggunaannya.", type: "neutral", score: 0, msg: "Neutral Zone. Menunggu membuat waktu berharga terbuang sia-sia." },
+                    { text: "Mengeluh di grup divisi kenapa harus ganti sistem mendadak.", type: "resistance", score: -5, msg: "Resistance! Mengeluh hanya menambah tumpukan stres tanpa solusi." }
+                ]
+            },
+            {
+                scenario: "Manajemen merilis format laporan baru yang wajib dipakai hari ini, namun instruksinya terlihat panjang dan rumit.",
+                options: [
+                    { text: "Segera buat satu draf percobaan pakai format baru dan minta quick review dari atasan.", type: "action", score: 10, msg: "Momentum Maker! Melakukan trial-error adalah cara tercepat beradaptasi." },
+                    { text: "Tetap pakai format lama dengan alasan format baru belum disosialisasikan.", type: "resistance", score: -5, msg: "Resistance! Menolak perubahan menyebabkan datamu ditolak dan harus kerja dua kali." },
+                    { text: "Menunggu jadwal meeting mingguan untuk menanyakan cara pakainya.", type: "neutral", score: 0, msg: "Neutral Zone. Menunda eksekusi berarti laporanmu akan menumpuk di akhir minggu." }
+                ]
+            },
+            {
+                scenario: "Sistem pengajuan cuti baru saja di-upgrade total. Kamu berencana mengambil cuti untuk minggu depan.",
+                options: [
+                    { text: "Protes ke HRD minta menggunakan form kertas manual saja.", type: "resistance", score: -5, msg: "Resistance! Memaksa mundur ke cara lama menghambat digitalisasi." },
+                    { text: "Menunggu ada rekan kerja yang berhasil cuti untuk diajari caranya.", type: "neutral", score: 0, msg: "Neutral Zone. Kurangnya inisiatif membuat urusan pribadimu terhambat." },
+                    { text: "Langsung login ke sistem baru dan ikuti panduan UI untuk menginput cuti.", type: "action", score: 10, msg: "New Beginning! Eksplorasi mandiri meningkatkan literasi digitalmu." }
+                ]
+            },
+            {
+                scenario: "Klien menuntut revisi project menggunakan software kolaborasi cloud yang belum pernah kamu pakai.",
+                options: [
+                    { text: "Menolak halus dan bilang kantormu hanya bisa pakai software standar lama.", type: "resistance", score: -5, msg: "Resistance! Kamu baru saja merusak citra profesional dan kehilangan klien." },
+                    { text: "Segera buat akun gratis, coba tools dasarnya, dan cicil pengerjaan.", type: "action", score: 10, msg: "Success Momentum! Klien menghargai kecepatan dan fleksibilitasmu." },
+                    { text: "Menghabiskan waktu 4 jam menonton tutorial dasar tanpa menyentuh file kerjanya.", type: "neutral", score: 0, msg: "Neutral Zone. Over-preparation seringkali adalah bentuk penundaan." }
+                ]
+            },
+            {
+                scenario: "SOP approval dana mendadak berubah dari 1 lapis menjadi 3 lapis via aplikasi baru. Kamu butuh dana cepat.",
+                options: [
+                    { text: "Menunda pengajuan sampai ada panduan resmi dari Finance.", type: "neutral", score: 0, msg: "Neutral Zone. Dana cair terlambat karena kamu lambat mengambil langkah pertama." },
+                    { text: "Menyalahkan manajemen karena membuat birokrasi makin panjang.", type: "resistance", score: -5, msg: "Resistance! Energi habis untuk marah, pekerjaan tetap tidak selesai." },
+                    { text: "Langsung pelajari alur barunya saat ini juga dan submit request ke lapis pertama.", type: "action", score: 10, msg: "New Beginning! Memecah masalah besar menjadi aksi pertama yang nyata." }
+                ]
+            },
+            {
+                scenario: "Perusahaan mengganti platform manajemen task tim. Semua list pekerjaan lama harus segera dipindah.",
+                options: [
+                    { text: "Membiarkan task kosong sebagai bentuk protes pasif.", type: "resistance", score: -5, msg: "Resistance! Kamu menjadi beban (bottleneck) bagi produktivitas tim." },
+                    { text: "Pindahkan task prioritasmu dulu hari ini agar terbiasa dengan interfacenya.", type: "action", score: 10, msg: "Momentum Maker! Aksi kecil memicu kebiasaan baru." },
+                    { text: "Menunggu admin divisi yang memindahkan semua data secara masal.", type: "neutral", score: 0, msg: "Neutral Zone. Menghilangkan kontrol atas pekerjaanmu sendiri." }
+                ]
+            },
+            {
+                scenario: "Divisimu digabung dengan divisi lain. Struktur berubah dan prosedur komunikasi dirombak ulang.",
+                options: [
+                    { text: "Menunggu rekan dari divisi lama yang mulai menyapa duluan.", type: "neutral", score: 0, msg: "Neutral Zone. Pasivitas menciptakan kecanggungan dalam tim." },
+                    { text: "Langsung inisiatif sapa tim baru, dan tanyakan metode komunikasi preferensi mereka.", type: "action", score: 10, msg: "New Beginning! Proaktif membangun relasi adalah kunci kolaborasi instan." },
+                    { text: "Menggosipkan perubahan ini di belakang dan bersikap sinis.", type: "resistance", score: -5, msg: "Resistance! Toksisitas membunuh momentum keberhasilan bersama." }
+                ]
+            },
+            {
+                scenario: "Kebijakan 'Clean Desk' diterapkan hari ini. Loker fisik dibongkar, semua file wajib disimpan di cloud.",
+                options: [
+                    { text: "Menyembunyikan dokumen fisik di tas/laci rahasia.", type: "resistance", score: -5, msg: "Resistance! Mengakali sistem tidak akan membuatmu berkembang." },
+                    { text: "Mulai sortir dan scan dokumen paling penting sekarang, buang sisanya.", type: "action", score: 10, msg: "Success Momentum! Ruang kerja bersih mempercepat kejernihan pikiran." },
+                    { text: "Membiarkan barang menumpuk di meja sampai ditegur oleh General Affair.", type: "neutral", score: 0, msg: "Neutral Zone. Menunda hanya memperbesar beban kerja di akhir hari." }
+                ]
+            },
+            {
+                scenario: "Vendor langgananmu mendadak tutup. Kamu wajib mencari pengganti via sistem e-procurement yang baru dirilis.",
+                options: [
+                    { text: "Langsung buka sistem e-procurement, input kata kunci, dan mulai seleksi.", type: "action", score: 10, msg: "New Beginning! Masalah operasional selesai lebih cepat dengan tools baru." },
+                    { text: "Mengeluh project akan telat dan mencari alasan ke atasan.", type: "resistance", score: -5, msg: "Resistance! Fokus pada masalah, bukan solusi." },
+                    { text: "Menunggu rekan kerja yang sudah paham sistem itu untuk membantumu mencarikan.", type: "neutral", score: 0, msg: "Neutral Zone. Ketergantungan pada orang lain memperlambat responmu." }
+                ]
+            },
+            {
+                scenario: "Mulai pagi ini absensi wajib menggunakan face-recognition via HP pribadi. Mesin sidik jari dimatikan.",
+                options: [
+                    { text: "Menunggu tim IT yang mendaftarkan wajahmu nanti siang.", type: "neutral", score: 0, msg: "Neutral Zone. Kamu terhitung telat masuk kerja karena menunda inisiatif." },
+                    { text: "Segera unduh aplikasinya, baca instruksi di layar, dan daftarkan wajah saat itu juga.", type: "action", score: 10, msg: "Momentum Maker! Kamu menguasai prosedur baru sebelum kopi pagimu habis." },
+                    { text: "Tetap menempelkan jari di mesin mati sambil marah-marah.", type: "resistance", score: -5, msg: "Resistance! Menolak realitas tidak akan mengubah fakta bahwa sistem sudah berubah." }
+                ]
+            }
+        ];
+
+        /* =========================================================================
+           STATE VARIABLES
+        ========================================================================= */
+        let playerName = "";
+        let currentQ = 0;
+        let score = 0;
+        let momentum = 0;  // 0 to 100
+        let workload = 0;  // 0 to 100
+        let maxMomentum = 0;
+        let earnedBadges = [];
+        let debriefLog = [];
+
+        /* =========================================================================
+           WEB AUDIO API SYSTEM (Lightweight Sound Engine)
+        ========================================================================= */
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let isMuted = false;
+        let bgmOsc = null;
+        let bgmGain = null;
+        let bgmInterval = null;
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            document.getElementById('audio-btn').innerText = isMuted ? '🔇' : '🔊';
+            if (audioCtx.state === 'suspended' && !isMuted) audioCtx.resume();
+            
+            if (bgmGain) {
+                bgmGain.gain.setTargetAtTime(isMuted ? 0 : 0.05, audioCtx.currentTime, 0.1);
+            }
+        }
+
+        // Generative BGM (Cyberpunk pulse)
+        function startBGM() {
+            if (isMuted || bgmOsc) return;
+            audioCtx.resume();
+            
+            bgmGain = audioCtx.createGain();
+            bgmGain.gain.value = 0.05; // Low volume
+            bgmGain.connect(audioCtx.destination);
+
+            let noteFreq = [220, 261.63, 329.63, 220, 196, 261.63]; // A3, C4, E4, A3, G3, C4
+            let step = 0;
+
+            bgmInterval = setInterval(() => {
+                if(isMuted) return;
+                let osc = audioCtx.createOscillator();
+                let env = audioCtx.createGain();
+                
+                osc.type = 'square';
+                osc.frequency.value = noteFreq[step % noteFreq.length] / 2; // Bass pulse
+                
+                osc.connect(env);
+                env.connect(bgmGain);
+                
+                env.gain.setValueAtTime(0, audioCtx.currentTime);
+                env.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 0.05);
+                env.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                
+                osc.start(audioCtx.currentTime);
+                osc.stop(audioCtx.currentTime + 0.3);
+                
+                step++;
+            }, 400); // 150 BPM pulse
+        }
+
+        // Simple SFX Generator
+        function playTone(freq, type, duration, vol=0.1) {
+            if (isMuted) return;
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            
+            osc.start(audioCtx.currentTime);
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playSFX(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            switch(type) {
+                case 'click': playTone(800, 'sine', 0.1, 0.1); break;
+                case 'flip':  playTone(200, 'triangle', 0.2, 0.1); setTimeout(()=>playTone(300, 'triangle', 0.2, 0.1), 100); break;
+                case 'success': 
+                    playTone(523.25, 'sine', 0.1); // C5
+                    setTimeout(()=>playTone(659.25, 'sine', 0.2), 100); // E5
+                    setTimeout(()=>playTone(783.99, 'sine', 0.4), 200); // G5
+                    break;
+                case 'warning':
+                    playTone(200, 'sawtooth', 0.3, 0.05);
+                    break;
+                case 'error':
+                    playTone(150, 'sawtooth', 0.2, 0.1);
+                    setTimeout(()=>playTone(100, 'sawtooth', 0.4, 0.1), 150);
+                    break;
+                case 'badge':
+                    playTone(880, 'square', 0.1, 0.05);
+                    setTimeout(()=>playTone(1108, 'square', 0.1, 0.05), 100);
+                    setTimeout(()=>playTone(1318, 'square', 0.3, 0.05), 200);
+                    break;
+            }
+        }
+
+
+        /* =========================================================================
+           GAME LOGIC & DOM MANIPULATION
+        ========================================================================= */
+        function switchScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        function goToBriefing() {
+            playSFX('click');
+            const nameInput = document.getElementById('playerName').value.trim();
+            if(!nameInput) {
+                alert("Identitas diperlukan untuk mencatat performa!");
+                return;
+            }
+            playerName = nameInput;
+            document.getElementById('display-name').innerText = playerName;
+            switchScreen('screen-briefing');
+        }
+
+        function startGame() {
+            playSFX('click');
+            startBGM();
+            // Shuffle choices for variation
+            questions.forEach(q => {
+                q.options.sort(() => Math.random() - 0.5);
+            });
+            switchScreen('screen-game');
+            loadQuestion();
+            updateHUD();
+        }
+
+        function updateHUD() {
+            // Update Text
+            document.getElementById('momentum-txt').innerText = momentum;
+            document.getElementById('workload-txt').innerText = workload;
+            document.getElementById('score-txt').innerText = score;
+            document.getElementById('progress-txt').innerText = `${currentQ + 1}/${questions.length}`;
+
+            // Update Bars
+            document.getElementById('momentum-fill').style.width = `${momentum}%`;
+            document.getElementById('workload-fill').style.width = `${workload}%`;
+
+            // Max momentum tracking
+            if(momentum > maxMomentum) maxMomentum = momentum;
+        }
+
+        function grantBadge(name) {
+            if(!earnedBadges.includes(name)) {
+                earnedBadges.push(name);
+                playSFX('badge');
+                
+                const badgeEl = document.createElement('div');
+                badgeEl.className = 'badge';
+                badgeEl.innerText = `🏆 ${name}`;
+                document.getElementById('in-game-badges').appendChild(badgeEl);
+            }
+        }
+
+        function loadQuestion() {
+            if (currentQ >= questions.length || workload >= 100) {
+                endGame();
+                return;
+            }
+
+            const q = questions[currentQ];
+            document.getElementById('q-number').innerText = currentQ + 1;
+            document.getElementById('scenario-text').innerText = q.scenario;
+            
+            // Reset Card
+            const card = document.getElementById('dialog-card');
+            card.classList.remove('is-flipped');
+            
+            // Generate Options
+            const optContainer = document.getElementById('options-container');
+            optContainer.innerHTML = '';
+            optContainer.style.display = 'flex';
+            optContainer.style.flexDirection = 'column';
+
+            q.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-option';
+                btn.innerText = opt.text;
+                btn.onclick = () => selectOption(opt);
+                optContainer.appendChild(btn);
+            });
+
+            // Badge Check mid-game
+            if(currentQ === 5 && score >= 40) grantBadge("Fast Learner");
+            if(momentum >= 80) grantBadge("Momentum Master");
+        }
+
+        function selectOption(option) {
+            // Hide options to prevent double click
+            document.getElementById('options-container').style.display = 'none';
+            playSFX('flip');
+
+            // Logic calculation
+            score += option.score;
+            if(option.type === 'action') {
+                momentum = Math.min(100, momentum + 25);
+                workload = Math.max(0, workload - 10);
+                playSFX('success');
+                setupCardBack('success-back', "Aksi Cepat!", option.msg);
+            } else if (option.type === 'neutral') {
+                momentum = Math.max(0, momentum - 15);
+                workload = Math.min(100, workload + 20);
+                playSFX('warning');
+                setupCardBack('neutral-back', "Zona Ragu...", option.msg);
+            } else {
+                momentum = 0;
+                workload = Math.min(100, workload + 30);
+                playSFX('error');
+                setupCardBack('danger-back', "Sistem Menolak!", option.msg);
+            }
+
+            // Save log
+            debriefLog.push(`Q${currentQ+1}: ${option.msg}`);
+
+            updateHUD();
+
+            // Flip Card
+            document.getElementById('dialog-card').classList.add('is-flipped');
+
+            // Wait then next
+            setTimeout(() => {
+                currentQ++;
+                loadQuestion();
+            }, 3500); // 3.5s read time for back of card
+        }
+
+        function setupCardBack(bgClass, title, text) {
+            const backFace = document.getElementById('card-back');
+            backFace.className = `card-face card-back glass-panel ${bgClass}`;
+            document.getElementById('feedback-title').innerText = title;
+            document.getElementById('feedback-text').innerText = text;
+        }
+
+        function endGame() {
+            clearInterval(bgmInterval);
+            playTone(440, 'sine', 1); setTimeout(()=>playTone(880, 'sine', 2), 500); // End jingle
+            switchScreen('screen-result');
+
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('final-momentum').innerText = maxMomentum;
+
+            const statusEl = document.getElementById('final-status');
+            if(workload >= 100) {
+                statusEl.innerHTML = `<span class="danger">SYSTEM OVERLOAD (Kerjaan Menumpuk)</span><br>Kamu menunda terlalu lama. Jangan tunggu instruksi, eksekusi segera prosedur baru!`;
+            } else if(score >= 80) {
+                statusEl.innerHTML = `<span style="color:var(--success); font-weight:bold;">CHANGE CATALYST (Luar Biasa)</span><br>Kamu berhasil memeluk "New Beginning" dan menciptakan momentum. Pertahankan refleks aksimu!`;
+                grantBadge("Agility Expert");
+            } else if(score >= 50) {
+                statusEl.innerHTML = `<span style="color:var(--warning); font-weight:bold;">ADAPTER (Cukup Baik)</span><br>Kamu bisa beradaptasi, namun masih ragu di beberapa situasi. Tingkatkan kecepatan aksimu!`;
+            } else {
+                statusEl.innerHTML = `<span class="danger">RESISTANT (Perlu Perbaikan)</span><br>Terlalu banyak keraguan. Ingat: Kesalahan di prosedur baru lebih baik daripada diam menunggu.`;
+            }
+
+            // Render Badges
+            const finalBadgeContainer = document.getElementById('final-badges');
+            earnedBadges.forEach(b => {
+                const el = document.createElement('div');
+                el.className = 'badge';
+                el.innerText = `🏆 ${b}`;
+                finalBadgeContainer.appendChild(el);
+            });
+
+            // Render Log
+            const logUl = document.getElementById('debrief-list');
+            debriefLog.forEach(log => {
+                const li = document.createElement('li');
+                li.innerText = log;
+                li.style.marginBottom = "5px";
+                logUl.appendChild(li);
+            });
+        }
+    </script>
+</body>
+</html>
